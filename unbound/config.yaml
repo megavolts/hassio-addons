@@ -1,17 +1,21 @@
-name: "Unbound"
-description: "a recursive dns resolver as addon for home assistant"
-version: "1.19.0-1"
-slug: "unbound"
+name: Unbound
+version: stable
+description: A recursive dns resolver as addon for home assistant
+url: https://github.com/megavolts/hassio-addons/tree/main/unbound
+version: 1.24.0-0
+slug: unbound
 init: false
+ingress: false
 arch:
   - aarch64
   - amd64
-  - armhf
   - armv7
-  - i386
 ports:
-  53/tcp: 5335
-  53/udp: 5335
+  5335/tcp: 5335
+  5335/udp: 5335
 ports_description:
-  8096/tcp: DNS tcp port
-  8920/udp: DNS udp port
+  5335/tcp: Unbound DNS resolver
+  5335/udp: Unbound DNS resolver
+options:
+  healthcheck:
+    site: 5335
