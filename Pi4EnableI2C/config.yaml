@@ -1,6 +1,6 @@
-name: "HassOS I2C Configurator"
+name: "Pi4EnableI2C"
 version: "0.14"
-slug: "hassosi2cconfiguratoraddon"
+slug: "Pi4EnableI2C"
 description: "This enables i2c. You can uninstall this when it has run once. Check logs for information."
 ingress: false
 ingress_stream: false
@@ -21,3 +21,5 @@ stage: "experimental"
 apparmor: false
 schema: []
 options: []
+boot: "manual"
+full_access: true
