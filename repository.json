@@ -1,6 +1,6 @@
 {
   "name": "HA add-ons by megavolts",
   "udev": true,
-  "url": "https://github.com/megavolts/ha-addons",
+  "url": "https://github.com/megavolts/hassio-addons",
   "maintainer": "megavolts"
 }

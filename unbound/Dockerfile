@@ -1,30 +1,29 @@
-ARG IMAGE_BUILD_DATE="2024-02-14" \
-  ALPINE_VERSION="3.19.1" \
-  OPENSSL_VERSION="3.1.4-r5" \
-  UNBOUND_VERSION="1.19.1" \
-  IMAGE_REVISION="2.0" \
-  UID="1000" \
-  GID="1000"  
+ARG IMAGE_BUILD_DATE="2025-9-24" \
+  ALPINE_VERSION="3.22.1" \
+  UNBOUND_VERSION="1.24.0" \
+  IMAGE_REVISION="0" \
+  UNBOUND_UID="1000" \
+  UNBOUND_GID="1000"  
 
 FROM alpine:"${ALPINE_VERSION}" AS buildenv
 
 ARG UNBOUND_VERSION \
-  UID \
-  GID
+  UNBOUND_UID \
+  UNBOUND_GID
 
 ENV UNBOUND_VERSION="${UNBOUND_VERSION}" \
   UNBOUND_DOWNLOAD_URL="https://www.nlnetlabs.nl/downloads/unbound/unbound-"${UNBOUND_VERSION}".tar.gz" \
-  UNBOUND_PGP="EDFAA3F2CA4E6EB05681AF8E9F6F1C2D7E045F8D" \
-  UNBOUND_SHA256="bc1d576f3dd846a0739adc41ffaa702404c6767d2b6082deb9f2f97cbb24a3a9" \
   INTERNIC_PGP="F0CB1A326BDF3F3EFA3A01FA937BB869E3A238C5" \
-  UID="${UID}" \
-  GID="${GID}"
+  UNBOUND_PGP_WIJNGAARDS="EDFAA3F2CA4E6EB05681AF8E9F6F1C2D7E045F8D" \
+  UNBOUND_PGP_GEORGE="948EB42322C5D00B79340F5DCFF3344D9087A490" \
+  UNBOUND_UID="${UNBOUND_UID}" \
+  UNBOUND_GID="${UNBOUND_GID}"
 
 WORKDIR /tmp/src
 
 RUN set -xe; \
-  addgroup -S -g "${GID}" _unbound && \
-  adduser -S -H -h /usr/local/unbound -g _unbound -u "${UID}" -D -G _unbound _unbound && \
+  addgroup -S -g "${UNBOUND_GID}" _unbound && \
+  adduser -S -H -h /usr/local/unbound -g _unbound -u "${UNBOUND_UID}" -D -G _unbound _unbound && \
   apk --update --no-cache add \
   ca-certificates \
   gnupg \
@@ -42,17 +41,19 @@ RUN set -xe; \
     expat-dev \
     protobuf-c-dev \
     hiredis-dev \
-    apk-tools && \
-  curl -sSL "${UNBOUND_DOWNLOAD_URL}" -o unbound.tar.gz && \
-  curl -sSL "${UNBOUND_DOWNLOAD_URL}".asc -o unbound.tar.gz.asc && \
-  echo "${UNBOUND_SHA256} *unbound.tar.gz" | sha256sum -c - && \
-  GNUPGHOME="$(mktemp -d)" && \
-  export GNUPGHOME && \
-  gpg --no-tty --keyserver hkps://keys.openpgp.org --recv-keys "${UNBOUND_PGP}" && \
-  gpg --batch --verify unbound.tar.gz.asc unbound.tar.gz && \
-  tar -xzf unbound.tar.gz && \
-  rm unbound.tar.gz && \
-  cd unbound-"${UNBOUND_VERSION}" && \
+    apk-tools \
+  && curl -sSL ${UNBOUND_DOWNLOAD_URL} -o unbound.tar.gz \
+  && curl -sSL ${UNBOUND_DOWNLOAD_URL}.asc -o unbound.tar.gz.asc \
+  && curl -sSL ${UNBOUND_DOWNLOAD_URL}.sha256 -o unbound.tar.gz.sha256 \
+  && echo "`cat unbound.tar.gz.sha256` unbound.tar.gz" | sha256sum -c - \
+  && GNUPGHOME="$(mktemp -d)" \
+  && export GNUPGHOME \
+    && gpg --no-tty --keyserver hkps://keys.openpgp.org --recv-keys "${UNBOUND_PGP_WIJNGAARDS}" "${UNBOUND_PGP_GEORGE}" \
+#  && gpg --no-tty --recv-keys "${UNBOUND_PGP_WIJNGAARDS}" "${UNBOUND_PGP_GEORGE}" \
+  && gpg --batch --verify unbound.tar.gz.asc unbound.tar.gz \
+  && tar -xzf unbound.tar.gz \
+  && rm unbound.tar.gz \
+  && cd unbound-"${UNBOUND_VERSION}" && \
   ./configure \
     --prefix=/usr/local/unbound/unbound.d \
     --with-run-dir=/usr/local/unbound/unbound.d \
@@ -80,8 +81,9 @@ RUN set -xe; \
   make && \
   make install && \
   mkdir -p \
-    "/usr/local/unbound/iana.d/" && \
-  curl -sSL https://www.internic.net/domain/named.cache -o /usr/local/unbound/iana.d/root.hints && \
+    "/usr/local/unbound/iana.d/"
+
+RUN curl -sSL https://www.internic.net/domain/named.cache -o /usr/local/unbound/iana.d/root.hints && \
   curl -sSL https://www.internic.net/domain/named.cache.md5 -o /usr/local/unbound/iana.d/root.hints.md5 && \
   curl -sSL https://www.internic.net/domain/named.cache.sig -o /usr/local/unbound/iana.d/root.hints.sig && \
   ROOT_HINTS_MD5=`cat /usr/local/unbound/iana.d/root.hints.md5` && \
@@ -90,7 +92,7 @@ RUN set -xe; \
   curl -sSL https://www.internic.net/domain/root.zone.md5 -o /usr/local/unbound/iana.d/root.zone.md5 && \
   curl -sSL https://www.internic.net/domain/root.zone.sig -o /usr/local/unbound/iana.d/root.zone.sig && \
   ROOT_ZONE_MD5=`cat /usr/local/unbound/iana.d/root.zone.md5` && \
-  echo "${ROOT_ZONE_MD5} */usr/local/unbound/iana.d/root.zone" | md5sum -c - && \   
+  echo "${ROOT_ZONE_MD5} */usr/local/unbound/iana.d/root.zone" | md5sum -c - && \
   GNUPGHOME="$(mktemp -d)" && \
   export GNUPGHOME && \
   gpg --no-tty --keyserver hkps://keys.openpgp.org --recv-keys "$INTERNIC_PGP" && \
@@ -99,10 +101,9 @@ RUN set -xe; \
     /usr/local/unbound/sbin/unbound-anchor -v -a /usr/local/unbound/iana.d/root.key || true && \
   pkill -9 gpg-agent && \
   pkill -9 dirmngr 
+
+COPY ./rootfs/ /
   
-COPY ./root/*.sh \
-  /usr/local/unbound/sbin/
-   
 RUN set -xe; \
     apk --update --no-cache add \
     ca-certificates \
@@ -115,6 +116,15 @@ RUN set -xe; \
     protobuf-c \
     hiredis \
     expat && \
+    # for the root.* updated
+    curl \
+    gpg \
+    perl \
+    # to tune unbound conf
+    coreutils \
+    libattr \
+    utmps-libs \
+    skalibs-libs \
   apk --purge del apk-tools && \
   mkdir -p \   
     "/usr/local/unbound/conf.d/" \
@@ -147,79 +157,100 @@ RUN set -xe; \
     strip --strip-all /usr/local/unbound/unbound.d/sbin/unbound-anchor && \
     strip --strip-all /usr/local/unbound/unbound.d/sbin/unbound-checkconf  && \
     strip --strip-all /usr/local/unbound/unbound.d/sbin/unbound-control && \
-    strip --strip-all /usr/local/unbound/unbound.d/sbin/unbound-host
-    
-COPY ./root/usr/local/unbound/unbound.conf \
-  /usr/local/unbound/unbound.conf 
+    strip --strip-all /usr/local/unbound/unbound.d/sbin/unbound-host \
+    # enable root.hints and root.zone updated via crontab
+    && (crontab -l 2>/dev/null; echo "0 0 * * 0 /bin/bash /usr/local/unbound/sbin/01-update_root_hints.sh && unbound-control reload") | crontab - \
+    && (crontab -l 2>/dev/null; echo "0 0 * * 0 /bin/bash /usr/local/unbound/sbin/01-update_root_zone.sh && unbound-control reload") | crontab - \
+    && (crontab -l 2>/dev/null; echo "5 0 * * 0 /bin/bash /usr/local/unbound/sbin/02-check_signature.sh && unbound-control reload") | crontab -
 
-FROM scratch as stage   
+COPY ./rootfs/usr/local/unbound/unbound.conf \
+      /usr/local/unbound/unbound.conf 
+
+FROM scratch AS stage   
 
 COPY --from=buildenv /usr/local/unbound/ \
-  /app/usr/local/unbound/
+    /app/usr/local/unbound/
  
 COPY --from=buildenv /lib/*-musl-* \
-  /app/lib/
+    /app/lib/
 
 COPY --from=buildenv /bin/sh /bin/sed \
-  /app/bin/
-  
-COPY --from=buildenv /usr/bin/nslookup /usr/bin/awk \
-  /app/bin/
+    /app/bin/
 
+# for healthcheck.sh
+COPY --from=buildenv /usr/bin/nslookup /usr/bin/awk \
+    /app/bin/
+
+# for ssl
 COPY --from=buildenv /usr/lib/libgcc_s* \
-  /usr/lib/libsodium* \
-  /usr/lib/libcrypto* \
-  /usr/lib/libssl* \
-  /usr/lib/libexpat* \
-  /usr/lib/libprotobuf-c* \
-  /usr/lib/libnghttp2* \
-  /usr/lib/libhiredis* \
-  /usr/lib/libevent* \
-  /usr/lib/libngtcp2* \
-  /app/usr/lib/
+    /usr/lib/libsodium* \
+    /usr/lib/libcrypto* \
+    /usr/lib/libssl* \
+    /usr/lib/libexpat* \
+    /usr/lib/libprotobuf-c* \
+    /usr/lib/libnghttp2* \
+    /usr/lib/libhiredis* \
+    /usr/lib/libevent* \
+    /usr/lib/libngtcp2* \
+    /app/usr/lib/
  
 COPY --from=buildenv /etc/ssl/ \
   /app/etc/ssl/
   
+# for root.* updated
+COPY --from=buildenv /usr/bin/curl /usr/bin/gpg /usr/bin/dirmngr /usr/bin/md5sum /usr/bin/nproc /usr/bin/perl \
+        /app/usr/bin/
+    
+# for tuning unbound
+COPY --from=buildenv  /usr/bin/nproc /usr/bin/perl \
+        /app/usr/bin/
+
+COPY --from=buildenv /usr/lib/libacl* /usr/lib/libattr* /usr/lib/libutmps*  /usr/lib/libskarnet* \
+        /app/usr/lib/
+
+COPY --from=buildenv  /usr/lib/perl5/core_perl/CORE/libperl* \
+        /app/usr/lib/perl5/core_perl/CORE/
+
+# for changing user
 COPY --from=buildenv /etc/passwd /etc/group \
-  /app/etc/
-  
+    /app/etc/
+ 
+# for TZ
 COPY --from=buildenv /usr/share/zoneinfo/ \
   /app/usr/share/zoneinfo/
 
 WORKDIR /
 
-FROM scratch as unbound
+FROM scratch AS unbound
 
 ARG UNBOUND_VERSION \
   ALPINE_VERSION \
   IMAGE_BUILD_DATE \
   IMAGE_REVISION \
-  UID 
+  UNBOUND_UID 
 
 ENV BUILD_DATE="${IMAGE_BUILD_DATE}" \
   IMAGE_REVISION="${IMAGE_REVISION}" \
   UNBOUND_VERSION="${UNBOUND_VERSION}" \
-  OPENSSL_VERSION="${OPENSSL_VERSION}" \
   ALPINE_VERSION="${ALPINE_VERSION}" \
-  UID="${UID}" \
+  UNBOUND_UID="${UNBOUND_UID}" \
   PATH=/usr/local/unbound/unbound.d/sbin:"$PATH" 
   
 LABEL maintainer="megavolts" \
-  org.opencontainers.image.title="megavolts/unbound-docker-haos" \
+  org.opencontainers.image.title="megavolts/hassio-addons/unbound" \
   org.opencontainers.image.created="${BUILD_DATE}" \
   org.opencontainers.image.version="${UNBOUND_VERSION}" \
   org.opencontainers.image.revision="${IMAGE_REVISION}" \
   org.opencontainers.image.description="Unbound is a validating, recursive, and caching DNS resolver." \
   org.opencontainers.image.summary="This multiarch Unbound Docker image is based on Alpine Linux with focus on security, privacy, performance and a small image size. And with Pi-hole in mind." \
   org.opencontainers.image.base.name="https://hub.docker.com/r/megavolts/unbound-docker-haos:latest" \
-  org.opencontainers.image.url="https://hub.docker.com/r/megavolts/unbound-docker-haos" \
-  org.opencontainers.image.source="https://github.com/megavolts/unbound-docker-haos" \
+  org.opencontainers.image.url="https://hub.docker.com/r/megavolts/hassio-addons/unbound" \
+  org.opencontainers.image.source="https://github.com/megavolts/hassio-addons/unbound" \
   org.opencontainers.image.authors="madnuttah" \
   org.opencontainers.image.licenses="MIT"
 
 COPY --from=stage /app/ /
 
-USER "${UID}"
+USER "${UNBOUND_UID}"
 
 CMD [ "/usr/local/unbound/sbin/unbound.sh" ]
