@@ -1,0 +1,23 @@
+name: "HassOS I2C Configurator"
+version: "0.14"
+slug: "hassosi2cconfiguratoraddon"
+description: "This enables i2c. You can uninstall this when it has run once. Check logs for information."
+ingress: false
+ingress_stream: false
+startup: "once"
+auth_api: true
+init: false
+arch:
+  - armhf
+  - armv7
+  - aarch64
+ports_description:
+  8096/tcp: DNS tcp port
+  8920/udp: DNS udp port
+init: false
+privileged:
+  - SYS_ADMIN
+stage: "experimental"
+apparmor: false
+schema: []
+options: []
