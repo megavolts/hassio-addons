@@ -12,7 +12,7 @@ python3 -m pip install smbus2
 python3 -m pip install paho-mqtt
 
 echo "I2C test starting..."
-python3 /sensor/i2c-test.py
+#python3 /sensor/i2c-test.py
 
 set -e
 echo;echo;echo;echo;
