@@ -2,9 +2,6 @@
 
 <!-- markdownlint-disable MD033 -->
 
-
-# Gollum add-on repository for Home Assistant
-
 ## Installation
 
 [!["Add repository on my Home Assistant"](https://raw.githubusercontent.com/Smeagolworms4/donate-assets/master/addon-ha.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmegavolts%2Fhassio-addons)
